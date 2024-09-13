@@ -1,13 +1,8 @@
 import json
 
 
-def hello_world(event, context):
+def lambda_handler(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({"message": "Success: get_user_post_ids"}),
     }
-
-
-def another_function(event, context):
-    # Handle another event
-    pass
