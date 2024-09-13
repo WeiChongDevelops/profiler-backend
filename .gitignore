@@ -159,3 +159,18 @@ cython_debug/
 
 # IntelliJ IDEA
 .idea/
+
+# Terraform
+.tfstate
+tfplan
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+override.tf
+override.tf.json
+*.override.tf
+*.override.tf.json
+terraform.tfvars
+terraform.tfvars.json
