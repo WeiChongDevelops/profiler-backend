@@ -1,6 +1,10 @@
 # Configure the AWS provider
 provider "aws" {
-  region = "ap-southeast-2"  # Replace with your desired AWS region
+  region = "ap-southeast-2"
+}
+
+variable "aws_region" {
+  default = "ap-southeast-2"
 }
 
 # Define Lambda functions
@@ -10,6 +14,7 @@ locals {
     "get_post_comments",
     "get_user_post_ids"
   ]
+  region = "ap-southeast-2"
 }
 
 # Create IAM role for Lambda functions
@@ -137,8 +142,18 @@ resource "aws_api_gateway_integration" "lambda" {
   http_method = aws_api_gateway_method.proxy.http_method
 
   integration_http_method = "POST"
-  type                    = "AWS_PROXY"
-  uri                     = aws_sfn_state_machine.instagram_workflow.arn
+  type                    = "AWS"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:states:action/StartExecution"
+  credentials             = aws_iam_role.api_gateway_role.arn
+
+  request_templates = {
+    "application/json" = <<EOF
+{
+  "input": "$util.escapeJavaScript($input.json('$'))",
+  "stateMachineArn": "${aws_sfn_state_machine.instagram_workflow.arn}"
+}
+EOF
+  }
 }
 
 resource "aws_api_gateway_deployment" "instagram_api" {
