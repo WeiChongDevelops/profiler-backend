@@ -64,7 +64,7 @@ resource "aws_lambda_function" "instagram_functions" {
   environment {
     variables = {
       HIKER_API_KEY = var.hiker_api_key
-      TEST_KEY = "test_key_here"
+      ANTHROPIC_API_KEY = var.anthropic_api_key
     }
   }
 
