@@ -58,27 +58,33 @@ resource "aws_lambda_function" "instagram_functions" {
 resource "aws_sfn_state_machine" "instagram_workflow" {
   name     = "instagram-workflow"
   role_arn = aws_iam_role.step_functions_role.arn
+  type     = "EXPRESS"
 
   definition = jsonencode({
-    StartAt = "GetInstagramUserId",
-    States = {
-      GetInstagramUserId = {
-        Type     = "Task",
-        Resource = aws_lambda_function.instagram_functions[0].arn,
-        Next     = "GetUserPostIds"
-      },
-      GetUserPostIds = {
-        Type     = "Task",
-        Resource = aws_lambda_function.instagram_functions[2].arn,
-        Next     = "GetPostComments"
-      },
-      GetPostComments = {
-        Type     = "Task",
-        Resource = aws_lambda_function.instagram_functions[1].arn,
-        End      = true
-      }
+  "StartAt": "GetInstagramUserId",
+  "States": {
+    "GetInstagramUserId": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-southeast-2:451063387247:function:get_instagram_user_id",
+      "Next": "GetUserPostIds",
+      "InputPath": "$",
+      "ResultPath": "$.user_id"
+    },
+    "GetUserPostIds": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-southeast-2:451063387247:function:get_user_post_ids",
+      "Next": "GetPostComments",
+      "ResultPath": "$.post_ids"
+    },
+    "GetPostComments": {
+      "Type": "Task",
+      "Resource": "arn:aws:lambda:ap-southeast-2:451063387247:function:get_post_comments",
+      "End": true,
+      "ResultPath": "$.comments",
+      "OutputPath": "$.comments"
     }
-  })
+  }
+})
 }
 
 # IAM Role for Step Functions
@@ -136,28 +142,92 @@ resource "aws_api_gateway_method" "proxy" {
   authorization = "NONE"
 }
 
-resource "aws_api_gateway_integration" "lambda" {
+resource "aws_api_gateway_integration" "step_function_integration" {
   rest_api_id = aws_api_gateway_rest_api.instagram_api.id
   resource_id = aws_api_gateway_method.proxy.resource_id
   http_method = aws_api_gateway_method.proxy.http_method
 
   integration_http_method = "POST"
   type                    = "AWS"
-  uri                     = "arn:aws:apigateway:${var.aws_region}:states:action/StartExecution"
+  uri                     = "arn:aws:apigateway:${var.aws_region}:states:action/StartSyncExecution"
   credentials             = aws_iam_role.api_gateway_role.arn
 
   request_templates = {
     "application/json" = <<EOF
 {
-  "input": "$util.escapeJavaScript($input.json('$'))",
+  "input": "$util.escapeJavaScript($input.body)",
   "stateMachineArn": "${aws_sfn_state_machine.instagram_workflow.arn}"
 }
 EOF
   }
 }
 
+# Integration response for HTTP 400 error
+resource "aws_api_gateway_integration_response" "bad_request_response" {
+  rest_api_id = aws_api_gateway_rest_api.instagram_api.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy.http_method
+  status_code = "400"
+
+  response_templates = {
+    "application/json" = <<EOF
+    {
+      "message": "$input.path('$.errorMessage')"
+    }
+    EOF
+  }
+
+  selection_pattern = "4\\d{2}" # Match all 4xx errors
+}
+
+
+resource "aws_api_gateway_integration_response" "integration_response_200" {
+  rest_api_id = aws_api_gateway_rest_api.instagram_api.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy.http_method
+  status_code = "200"
+
+  response_templates = {
+    "application/json" = <<EOF
+    {
+      "comments": "$util.parseJson($input.path('$.output')).comments"
+    }
+    EOF
+  }
+
+  selection_pattern = "2\\d{2}" # Match all 4xx errors
+}
+
+
+# Default integration response for other errors
+resource "aws_api_gateway_integration_response" "default_response" {
+  rest_api_id = aws_api_gateway_rest_api.instagram_api.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy.http_method
+  status_code = "500"
+
+  response_templates = {
+    "application/json" = <<EOF
+    {
+      "message": "An unexpected error occurred."
+    }
+    EOF
+  }
+
+  # Catch all other errors
+  selection_pattern = ""
+}
+
+resource "aws_api_gateway_method_response" "method_response_200" {
+  rest_api_id = aws_api_gateway_rest_api.instagram_api.id
+  resource_id = aws_api_gateway_resource.proxy.id
+  http_method = aws_api_gateway_method.proxy.http_method
+  status_code = "200"
+}
+
+
 resource "aws_api_gateway_deployment" "instagram_api" {
-  depends_on = [aws_api_gateway_integration.lambda]
+  depends_on = [aws_api_gateway_integration.step_function_integration]
 
   rest_api_id = aws_api_gateway_rest_api.instagram_api.id
   stage_name  = "prod"
@@ -191,7 +261,7 @@ resource "aws_iam_role_policy" "api_gateway_policy" {
       {
         Effect = "Allow"
         Action = [
-          "states:StartExecution"
+          "states:StartSyncExecution"
         ]
         Resource = aws_sfn_state_machine.instagram_workflow.arn
       }

@@ -9,4 +9,4 @@ def lambda_handler(event, context):
         "post3": ["comment5", "comment6"],
     }
     print(f"Comments for post IDs {post_ids}: {comments}")
-    return {"statusCode": 200, "body": json.dumps(comments)}
+    return {"comments": comments}
