@@ -19,7 +19,7 @@ async def process_event(event):
 
     # Get the sentiment proportions
     sentiment_metric_proportions = await get_sentiment_metric_proportions(
-        sentiment_metric_counts, comments.length
+        sentiment_metric_counts, len(comments)
     )
 
     # Package the sentiment data together
@@ -38,9 +38,7 @@ async def get_sentiment_metric_proportions(counts, total_tweets):
 
 
 async def get_sentiment_metric_counts(tweets):
-    client = anthropic.Client(
-        api_key=os.getenv("ANTHROPIC_API_KEY"),
-    )
+    client = anthropic.Client()
 
     typescriptTypeString = """
     export interface SentimentMetrics {
@@ -91,13 +89,17 @@ async def get_sentiment_metric_counts(tweets):
     )
 
     def call_anthropic():
-        completion = client.messages.create(
-            model=ANTHROPIC_MODEL,
-            max_tokens=4000,
-            temperature=0,
-            messages=[{"role": "user", "content": prompt}],
-        )
-        return completion
+        try:
+            completion = client.messages.create(
+                model=ANTHROPIC_MODEL,
+                max_tokens=4000,
+                temperature=0,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            return completion
+        except Exception as e:
+            print(f"Error calling Anthropic API: {e}")
+            return None
 
     # Run the synchronous API call in a separate thread
     response = await asyncio.to_thread(call_anthropic)
