@@ -11,6 +11,11 @@ do
     cd ../..
 done
 
+# Zip the Lambda layer
+cd lambda_layers/common_layer || exit
+zip -r layer.zip python/
+cd ../..
+
 # Change to the deploy directory
 cd deploy || exit
 
