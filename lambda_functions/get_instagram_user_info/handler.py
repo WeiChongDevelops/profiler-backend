@@ -12,16 +12,16 @@ async def process_event(event):
     username = event.get("username")
 
     async_client = get_async_client()
-    user_id = await get_instagram_user_id(async_client, username)
+    user_info = await get_instagram_user_info(async_client, username)
 
-    print("Getting user ID for Instagram username...")
-    print(f"User ID for {username}: {user_id}")
+    print("Getting user info from Instagram username...")
+    print(f"User info for {username}: {user_info}")
 
-    return user_id
+    return user_info
 
 
-async def get_instagram_user_id(async_client, username):
-    user = await async_client.user_by_username_v1(username)
+async def get_instagram_user_info(async_client, username):
+    user_info = await async_client.user_by_username_v1(username)
     print("Below is raw user/error output.")
-    print(user)
-    return user["pk"]
+    print(user_info)
+    return user_info
