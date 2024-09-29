@@ -59,7 +59,7 @@ resource "aws_lambda_function" "instagram_functions" {
   filename      = "../lambda_functions/${local.lambda_functions[count.index]}/function.zip"
   function_name = local.lambda_functions[count.index]
   role          = aws_iam_role.lambda_role.arn
-  timeout       = 120
+  timeout       = 140
   handler       = "handler.lambda_handler"
   runtime       = "python3.11"
 
