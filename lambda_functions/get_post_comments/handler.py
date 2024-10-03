@@ -20,9 +20,9 @@ async def process_event(event):
 
 
 async def get_post_comments(async_client, post_ids: List[str]) -> List:
-    all_comments = [
-        await async_client.media_comments_v2(post_id) for post_id in post_ids
-    ]
+    all_comments = await asyncio.gather(
+        *[async_client.media_comments_v2(post_id) for post_id in post_ids]
+    )
     print("Below is raw comment/error output.")
     print(all_comments)
     comments_filtered = [
