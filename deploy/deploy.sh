@@ -4,7 +4,7 @@
 cd ..
 
 # Zip Lambda functions
-for func in get_instagram_user_id get_post_comments get_user_post_ids get_all_sentiment_data get_instagram_user_info
+for func in get_instagram_user_id get_post_comments get_user_post_ids get_all_sentiment_data get_instagram_user_info get_bedrock_sentiment_data
 do
     cd lambda_functions/$func || exit
     zip -j function.zip handler.py

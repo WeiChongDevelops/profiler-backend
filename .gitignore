@@ -174,4 +174,5 @@ override.tf.json
 *.override.tf.json
 terraform.tfvars
 terraform.tfvars.json
-/deploy/env.tf
+/deploy/terraform.tfvars
+deploy/terraform.tfvars
